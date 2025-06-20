@@ -1,13 +1,12 @@
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
-    QHBoxLayout, QGroupBox, QFileDialog, QMessageBox, QFrame
-)
-from PyQt5.QtGui import QImage, QPixmap, QFont
-from PyQt5.QtCore import Qt
+import os
 import cv2
 import numpy as np
-import os
-
+from PyQt5.QtWidgets import (
+    QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
+    QHBoxLayout, QGroupBox, QFileDialog, QMessageBox, QFrame
+)
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt
 from src.camera_handler import CameraHandler
 from src.processor import ImageProcessor
 from src.settings_dialog import SettingsDialog
@@ -16,9 +15,8 @@ from src.settings_dialog import SettingsDialog
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("🔍 Deteksi Keaslian Uang - Kelompok 5")
-        self.setGeometry(150, 80, 1280, 720)
-        self.setStyleSheet("background-color: #f0f0f0;")
+        self.setWindowTitle("Deteksi Keaslian Uang - Kelompok 5")
+        self.setGeometry(100, 100, 1200, 800)
 
         self.processor = ImageProcessor()
         self.camera_handler = CameraHandler()
@@ -29,74 +27,45 @@ class MainWindow(QMainWindow):
         self.init_connections()
 
     def init_ui(self):
-        # Kamera View
-        self.original_view = QLabel("Tampilan Kamera")
+        self.original_view = QLabel(self)
         self.original_view.setAlignment(Qt.AlignCenter)
-        self.original_view.setFrameShape(QFrame.Box)
         self.original_view.setMinimumSize(640, 480)
-        self.original_view.setStyleSheet("background-color: #222; color: white;")
+        self.original_view.setFrameShape(QFrame.Box)
+        self.original_view.setStyleSheet("border: 2px solid black;")
 
-        # Processed View
-        self.processed_view = QLabel("Hasil Deteksi")
+        self.processed_view = QLabel(self)
         self.processed_view.setAlignment(Qt.AlignCenter)
-        self.processed_view.setFrameShape(QFrame.Box)
         self.processed_view.setMinimumSize(640, 480)
-        self.processed_view.setStyleSheet("background-color: #444; color: white;")
+        self.processed_view.setFrameShape(QFrame.Box)
+        self.processed_view.setStyleSheet("border: 2px solid black;")
 
-        # Hasil deteksi
-        self.result_label = QLabel("Silakan buka gambar atau aktifkan kamera")
+        self.result_label = QLabel("Arahkan kamera ke uang kertas dengan pencahayaan dari belakang", self)
         self.result_label.setAlignment(Qt.AlignCenter)
-        self.result_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2d3436;")
-        self.result_label.setFixedHeight(60)
+        self.result_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
-        # Tombol kontrol
-        self.capture_btn = QPushButton("📷 Ambil Gambar")
-        self.load_btn = QPushButton("📂 Buka File")
-        self.settings_btn = QPushButton("⚙️ Pengaturan")
-        self.quit_btn = QPushButton("❌ Keluar")
+        self.capture_btn = QPushButton("Ambil Gambar", self)
+        self.load_btn = QPushButton("Buka File", self)
+        self.settings_btn = QPushButton("Pengaturan", self)
+        self.quit_btn = QPushButton("Keluar", self)
 
-        # Style tombol
-        for btn in [self.capture_btn, self.load_btn, self.settings_btn, self.quit_btn]:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #0984e3;
-                    color: white;
-                    font-weight: bold;
-                    padding: 10px;
-                    border-radius: 6px;
-                }
-                QPushButton:hover {
-                    background-color: #74b9ff;
-                }
-            """)
-            btn.setCursor(Qt.PointingHandCursor)
+        control_panel = QGroupBox("Kontrol")
+        control_layout = QHBoxLayout()
+        control_layout.addWidget(self.capture_btn)
+        control_layout.addWidget(self.load_btn)
+        control_layout.addWidget(self.settings_btn)
+        control_layout.addWidget(self.quit_btn)
+        control_panel.setLayout(control_layout)
 
-        # Layout tombol
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.capture_btn)
-        button_layout.addWidget(self.load_btn)
-        button_layout.addWidget(self.settings_btn)
-        button_layout.addWidget(self.quit_btn)
+        view_panel = QGroupBox("Tampilan")
+        view_layout = QHBoxLayout()
+        view_layout.addWidget(self.original_view)
+        view_layout.addWidget(self.processed_view)
+        view_panel.setLayout(view_layout)
 
-        button_group = QGroupBox("Kontrol")
-        button_group.setLayout(button_layout)
-
-        # Layout kiri & kanan
-        kiri = QVBoxLayout()
-        kiri.addWidget(self.original_view)
-
-        kanan = QVBoxLayout()
-        kanan.addWidget(self.processed_view)
-        kanan.addWidget(self.result_label)
-
-        main_content = QHBoxLayout()
-        main_content.addLayout(kiri)
-        main_content.addLayout(kanan)
-
-        # Gabungkan semua layout
         main_layout = QVBoxLayout()
-        main_layout.addLayout(main_content)
-        main_layout.addWidget(button_group)
+        main_layout.addWidget(view_panel)
+        main_layout.addWidget(self.result_label)
+        main_layout.addWidget(control_panel)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -109,38 +78,46 @@ class MainWindow(QMainWindow):
         self.quit_btn.clicked.connect(self.close)
 
     def update_frame(self, frame):
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        h, w, ch = rgb.shape
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
-        qt_img = QImage(rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        self.original_view.setPixmap(QPixmap.fromImage(qt_img).scaled(
-            self.original_view.width(), self.original_view.height(), Qt.KeepAspectRatio
+        qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        self.original_view.setPixmap(QPixmap.fromImage(qt_image).scaled(
+            self.original_view.width(), 
+            self.original_view.height(),
+            Qt.KeepAspectRatio
         ))
 
     def show_processed_image(self, image):
         if len(image.shape) == 2:
             h, w = image.shape
-            qt_img = QImage(image.data, w, h, w, QImage.Format_Grayscale8)
+            qt_image = QImage(image.data, w, h, w, QImage.Format_Grayscale8)
         else:
             h, w, ch = image.shape
             bytes_per_line = ch * w
-            qt_img = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            qt_image = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
 
-        self.processed_view.setPixmap(QPixmap.fromImage(qt_img).scaled(
-            self.processed_view.width(), self.processed_view.height(), Qt.KeepAspectRatio
+        self.processed_view.setPixmap(QPixmap.fromImage(qt_image).scaled(
+            self.processed_view.width(),
+            self.processed_view.height(),
+            Qt.KeepAspectRatio
         ))
 
     def capture_image(self):
         print("[DEBUG] Tombol Ambil Gambar diklik")
         frame = self.camera_handler.capture_image()
         if frame is not None:
-            print("[DEBUG] Gambar berhasil ditangkap")
+            print("[DEBUG] Gambar berhasil ditangkap dari kamera")
             self.process_image(frame)
         else:
-            QMessageBox.warning(self, "Kamera", "Gagal menangkap gambar.")
+            print("[DEBUG] Gagal menangkap gambar dari kamera")
+            QMessageBox.warning(self, "Kamera", "Gagal menangkap gambar dari kamera.")
 
     def load_image(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Buka Gambar", "", "Image Files (*.png *.jpg *.jpeg *.bmp)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Buka Gambar Uang", "", "Image Files (*.png *.jpg *.jpeg *.bmp)"
+        )
+
         if file_path:
             print(f"[DEBUG] Gambar dimuat: {file_path}")
             image = cv2.imread(file_path)
@@ -152,21 +129,21 @@ class MainWindow(QMainWindow):
         roi = self.processor.find_watermark_roi(image)
         processed = self.processor.preprocess_image(image, roi)
         edges = self.processor.detect_watermark(processed)
-        nominal, confidence = self.processor.detect_nominal(image)
         result, edge_pixels, entropy = self.processor.analyze_watermark(edges)
-
         self.show_processed_image(edges)
         self.result_label.setText(
-            f"📝 Hasil: <b>{result}</b> | Nominal: <b>{nominal}</b> ({confidence:.2f})<br>"
-            f"🧮 Edge Pixels: {edge_pixels} | Entropy: {entropy:.2f}"
+            f"Hasil: {result}\nEdge Pixels: {edge_pixels}\nEntropy: {entropy:.2f}"
         )
 
     def show_settings(self):
         print("[DEBUG] Tombol Pengaturan diklik")
-        dialog = SettingsDialog(parent=self)
-        if dialog.exec_():
-            QMessageBox.information(self, "Berhasil", "Pengaturan disimpan.")
-    
+        dialog = SettingsDialog(self.processor.config, self)
+        if dialog.exec_() == dialog.Accepted:
+            new_config = dialog.get_settings()
+            self.processor.config.update(new_config)
+            self.processor.save_config()
+            QMessageBox.information(self, "Pengaturan", "Pengaturan berhasil disimpan.")
+
     def closeEvent(self, event):
         if hasattr(self, 'camera_handler'):
             self.camera_handler.stop()
