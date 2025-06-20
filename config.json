@@ -1,0 +1,9 @@
+{
+    "canny_threshold1": 100,
+    "canny_threshold2": 200,
+    "gaussian_blur": 5,
+    "watermark_threshold": 800,
+    "histogram_clip_limit": 3.0,
+    "histogram_tile_size": 8,
+    "entropy_threshold": 3.0
+}
